@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+
+# Create NIfTI overlay images by combining a base structural image 
+# with a coregistered map using FSL tools
+
+# Bash template based on https://betterdev.blog/minimal-safe-bash-script-template/
+
+set -Eeuo pipefail
+trap cleanup SIGINT SIGTERM ERR EXIT
+
+usage() {
+  cat <<EOF
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [--no-color] b m t o
+
+Create NIfTI overlay images by combining a base structural image with a coregistered map using FSL tools
+
+Positional arguments:
+b               base image
+m               map
+t               map threshold
+o               output
+
+Optional arguments:
+-h, --help      print help and exit
+--no-color      don't colorize terminal output
+
+EOF
+  exit
+}
+
+cleanup() {
+  trap - SIGINT SIGTERM ERR EXIT
+}
+
+setup_colors() {
+  if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+    NOFORMAT='\033[0m' GREEN='\033[0;32m' 
+  else
+    NOFORMAT='' GREEN='' 
+  fi
+}
+
+msg() {
+  echo >&2 -e "${1-}"
+}
+
+die() {
+  local msg=$1
+  local code=${2-1} # default exit status 1
+  msg "$msg"
+  exit "$code"
+}
+
+parse_params() {
+  while :; do
+    case "${1-}" in
+    -h | --help) usage ;;
+    --no-color) NO_COLOR=1 ;;
+    -?*) die "Unknown option: $1" ;;
+    *) break ;;
+    esac
+    shift
+  done
+
+  args=("$@")
+
+  # check required params and arguments
+  [[ ${#args[@]} -ne 4 ]] && usage
+
+  return 0
+}
+
+scale() {
+
+#  Linearly scale image intensities within range [min, max] to [lo, hi] using mrstats and mrcalc
+#           (hi - lo)(x - min(x))
+# f(x) = ----------------------------  + lo
+#            max(x) - min(x)
+
+
+  in_fp=$1
+  scaled_fp=$2
+  lo=$3
+  hi=$4
+  
+  out_range=$(echo "${hi}"-"${lo}" | bc)
+
+  min_max=$(fslstats "${in_fp}" -R)
+  min=$(echo "${min_max}"| cut -d " " -f 1)
+  max=$(echo "${min_max}"| cut -d " " -f 2)
+  in_range=$(echo "${max}"-"${min}" | bc)
+  
+  fslmaths "${in_fp}" -sub "${min}" -mul "${out_range}" -div "${in_range}" -add "${lo}" "${scaled_fp}"
+
+}
+
+parse_params "$@"
+setup_colors
+
+base_fp=$(realpath "${args[0]}")
+map_fp=$(realpath "${args[1]}")
+map_thr="${args[2]}"
+out_fp=$(realpath "${args[3]}")
+
+cmd_name=$(basename "${BASH_SOURCE[0]}")
+
+msg "${cmd_name}: ${GREEN}Making temporary directory${NOFORMAT}"
+temp_dp=$(mktemp -d)
+cd "${temp_dp}"
+
+msg "${cmd_name}: ${GREEN}Scaling base image to range 0:2047${NOFORMAT}"
+scale "${base_fp}" base_scaled 0 2047
+
+msg "${cmd_name}: ${GREEN}Thresholding map${NOFORMAT}"
+fslmaths "${map_fp}" -nan -thr "${map_thr}" map_thr
+
+msg "${cmd_name}: ${GREEN}Binarising thresholded map${NOFORMAT}"
+fslmaths map_thr -bin map_thr_bin
+
+msg "${cmd_name}: ${GREEN}Scaling threshold map to range 3072:4095${NOFORMAT}"
+scale map_thr map_thr_scaled 3072 4095
+
+msg "${cmd_name}: ${GREEN}Combining scaled base and map images${NOFORMAT}"
+fslmaths map_thr_scaled -mul map_thr_bin -max base_scaled "${out_fp}" -odt short
+rm -r "${temp_dp}"
+
+

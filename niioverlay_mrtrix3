@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+
+# Create NIfTI overlay images by combining a base structural image 
+# with a coregistered map using MRtrix3 tools
+
+# Bash template based on https://betterdev.blog/minimal-safe-bash-script-template/
+
+set -Eeuo pipefail
+trap cleanup SIGINT SIGTERM ERR EXIT
+
+usage() {
+  cat <<EOF
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [--no-color] [-f] b m t o
+
+Create NIfTI overlay images by combining a base structural image with a coregistered map using MRtrix3 tools
+
+Positional arguments:
+b               base image
+m               map
+t               map threshold
+o               output
+
+Optional arguments:
+-h, --help      print help and exit
+--no-color      don't colorize terminal output
+-f, --force     force overwrite of output files
+
+EOF
+  exit
+}
+
+cleanup() {
+  trap - SIGINT SIGTERM ERR EXIT
+}
+
+setup_colors() {
+  if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+    NOFORMAT='\033[0m' GREEN='\033[0;32m' 
+  else
+    NOFORMAT='' GREEN='' 
+  fi
+}
+
+msg() {
+  echo >&2 -e "${1-}"
+}
+
+die() {
+  local msg=$1
+  local code=${2-1} # default exit status 1
+  msg "$msg"
+  exit "$code"
+}
+
+parse_params() {
+  force=0
+  while :; do
+    case "${1-}" in
+    -h | --help) usage ;;
+    --no-color) NO_COLOR=1 ;;
+    -f | --force) force=1 ;;
+    -?*) die "Unknown option: $1" ;;
+    *) break ;;
+    esac
+    shift
+  done
+
+  args=("$@")
+
+  # check required params and arguments
+  [[ ${#args[@]} -ne 4 ]] && usage
+
+  return 0
+}
+
+scale() {
+
+#  Linearly scale image intensities within range [min, max] to [lo, hi] using mrstats and mrcalc
+#           (hi - lo)(x - min(x))
+# f(x) = ----------------------------  + lo
+#            max(x) - min(x)
+
+
+  in_fp=$1
+  scaled_fp=$2
+  lo=$3
+  hi=$4
+  
+  out_range=$(echo "${hi}"-"${lo}" | bc)
+  
+  min=$(mrstats -output min "${in_fp}")
+  max=$(mrstats -output max "${in_fp}")
+  in_range=$(echo "${max}"-"${min}" | bc)
+  
+  mrcalc "${in_fp}" "${min}" -subtract "${out_range}" -mul "${in_range}" -div "${lo}" -add "${scaled_fp}" ${force_str}
+}
+
+parse_params "$@"
+setup_colors
+
+if [ ${force} -eq 1 ]; then
+  force_str="-force"
+else
+  force_str=""
+fi
+
+base_fp=$(realpath "${args[0]}")
+map_fp=$(realpath "${args[1]}")
+map_thr="${args[2]}"
+out_fp=$(realpath "${args[3]}")
+
+cmd_name=$(basename "${BASH_SOURCE[0]}")
+
+
+msg "${cmd_name}: ${GREEN}Making temporary directory${NOFORMAT}"
+temp_dp=$(mktemp -d)
+mrconvert "${base_fp}" "${temp_dp}"/base.mif
+mrconvert "${map_fp}" "${temp_dp}"/map.mif
+
+cd "${temp_dp}"
+
+msg "${cmd_name}: ${GREEN}Checking image dimensions and transform match${NOFORMAT}"
+mrcalc base.mif map.mif -add base_and_map.mif ${force_str}
+
+msg "${cmd_name}: ${GREEN}Scaling base image to range 0:2047${NOFORMAT}"
+scale base.mif  base_scaled.mif 0 2047
+
+msg "${cmd_name}: ${GREEN}Removing NaNs from map${NOFORMAT}"
+mrcalc map.mif -finite map.mif 0.0 -if map_nonan.mif ${force_str}
+
+msg "${cmd_name}: ${GREEN}Thresholding map${NOFORMAT}"
+mrcalc map_nonan.mif "${map_thr}" -ge map_nonan.mif -mul map_thr.mif ${force_str}
+
+msg "${cmd_name}: ${GREEN}Binarising thresholded map${NOFORMAT}"
+mrcalc map.mif "${map_thr}" -ge map_thr_bin.mif ${force_str}
+
+msg "${cmd_name}: ${GREEN}Scaling threshold map to range 3072:4095${NOFORMAT}"
+scale map_thr.mif map_thr_scaled.mif 3072 4095 
+
+msg "${cmd_name}: ${GREEN}Combining scaled base and map images${NOFORMAT}"
+mrcalc map_thr_scaled.mif map_thr_bin.mif -mul base_scaled.mif -max  "${out_fp}" -datatype uint16 ${force_str}
+rm -r "${temp_dp}"
+
+
