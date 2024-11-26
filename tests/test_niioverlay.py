@@ -11,6 +11,7 @@ THIS_DIR = pathlib.Path(__file__).resolve().parent
 TEST_DATA_DIR = THIS_DIR / "test_data"
 __version__ = importlib.metadata.version("myapp")
 
+
 def perror(r_fp, t_fp):
     """
     calculate the percentage error between two nifti files; a reference and
@@ -168,7 +169,9 @@ def test_mismatched_geom(tmp_path, script_runner):
     base_fp = TEST_DATA_DIR / "axial.nii.gz"
     map_fp = TEST_DATA_DIR / "map_mismatched_geom.nii.gz"
 
-    result = script_runner.run([SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp)])
+    result = script_runner.run(
+        [SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp)]
+    )
     assert not result.success
     assert result.stderr.endswith(
         "base and map images have mismatched geometry, exiting\n"
@@ -183,7 +186,9 @@ def test_niioverlay(tmp_path, script_runner):
     base_fp = TEST_DATA_DIR / "axial.nii.gz"
     map_fp = TEST_DATA_DIR / "map.nii.gz"
 
-    result = script_runner.run([SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp)])
+    result = script_runner.run(
+        [SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp)]
+    )
     assert result.success
 
     assert perror(ref_out_fp, out_fp) < pthresh
