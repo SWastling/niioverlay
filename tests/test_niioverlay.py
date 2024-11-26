@@ -9,7 +9,7 @@ import niioverlay.niioverlay as niioverlay
 
 THIS_DIR = pathlib.Path(__file__).resolve().parent
 TEST_DATA_DIR = THIS_DIR / "test_data"
-__version__ = importlib.metadata.version("myapp")
+__version__ = importlib.metadata.version("niioverlay")
 
 
 def perror(r_fp, t_fp):
