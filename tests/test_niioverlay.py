@@ -122,7 +122,7 @@ def test_scale(im, lo, hi, expected_output):
 
 
 SCRIPT_NAME = "niioverlay"
-SCRIPT_USAGE = f"usage: {SCRIPT_NAME} [-h] [-r] b m t o"
+SCRIPT_USAGE = f"usage: {SCRIPT_NAME} [-h] [--version] [-r] b m t o"
 
 
 def test_prints_help_1(script_runner):
