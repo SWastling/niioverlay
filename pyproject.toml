@@ -1,6 +1,6 @@
 [project]
 name = "niioverlay"
-version = "1.0.0"
+version = "1.0.1"
 description = "Create NIfTI overlay images by combining a base structural image with a coregistered map"
 readme = "README.md"
 authors = [
