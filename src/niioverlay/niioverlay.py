@@ -6,9 +6,12 @@ import argparse
 import copy
 import pathlib
 import sys
+import importlib.metadata
 
 import nibabel as nib
 import numpy as np
+
+__version__ = importlib.metadata.version("niioverlay")
 
 
 def check_shape_and_orientation(a_obj, b_obj):
@@ -65,6 +68,12 @@ def main():
         description="Create NIfTI overlay images "
         "by combining a base structural image "
         "with a coregistered map"
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
 
     parser.add_argument("b", type=pathlib.Path, help="base image")
