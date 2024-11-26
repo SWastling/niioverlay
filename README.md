@@ -41,35 +41,25 @@ can be readily converted to DICOM files with a Magnetic Resonance (MR) Image
 composite Information Object Definition (IOD) with an appropriate tool. 
 
 ## Installing
-1. Create a directory to store the package e.g.:
+1. Create a new virtual environment in which to install `niioverlay`:
 
     ```bash
-    mkdir niioverlay
-    ```
-
-2. Create a new virtual environment in which to install `niioverlay`:
-
-    ```bash
-    python3 -m venv niioverlay-env
+    uv venv niioverlay-venv
     ```
    
-3. Activate the virtual environment:
+2. Activate the virtual environment:
 
     ```bash
-    source niioverlay-env/bin/activate
+    source niioverlay-venv/bin/activate
     ```
 
-4. Upgrade `pip` and `build`:
-
+4. Install using `uv pip`:
     ```bash
-    pip install --upgrade pip
-    pip install --upgrade build
+    uv pip install git+https://github.com/SWastling/niioverlay.git
     ```
-
-5. Install using `pip`:
-    ```bash
-    pip install git+https://github.com/SWastling/niioverlay.git
-    ```
+   
+> [!TIP]
+> You can also run `niioverlay` without installing it using [uvx](https://docs.astral.sh/uv/guides/tools/) i.e. with the command `uvx --from  git+https://github.com/SWastling/niioverlay.git niioverlay`
 
 ## Alternate Implementations using FSL or MRtrix3 Tools
 It is possible to produce identical results using 
