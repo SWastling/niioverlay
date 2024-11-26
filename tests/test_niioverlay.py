@@ -3,12 +3,13 @@ import pathlib
 import nibabel as nib
 import numpy as np
 import pytest
+import importlib.metadata
 
 import niioverlay.niioverlay as niioverlay
 
 THIS_DIR = pathlib.Path(__file__).resolve().parent
 TEST_DATA_DIR = THIS_DIR / "test_data"
-
+__version__ = importlib.metadata.version("myapp")
 
 def perror(r_fp, t_fp):
     """
@@ -124,25 +125,32 @@ SCRIPT_USAGE = f"usage: {SCRIPT_NAME} [-h] [-r] b m t o"
 
 
 def test_prints_help_1(script_runner):
-    result = script_runner.run(SCRIPT_NAME)
+    result = script_runner.run([SCRIPT_NAME])
     assert result.success
     assert result.stdout.startswith(SCRIPT_USAGE)
 
 
 def test_prints_help_2(script_runner):
-    result = script_runner.run(SCRIPT_NAME, "-h")
+    result = script_runner.run([SCRIPT_NAME, "-h"])
     assert result.success
     assert result.stdout.startswith(SCRIPT_USAGE)
 
 
 def test_prints_help_for_invalid_option(script_runner):
-    result = script_runner.run(SCRIPT_NAME, "-!")
+    result = script_runner.run([SCRIPT_NAME, "-!"])
     assert not result.success
     assert result.stderr.startswith(SCRIPT_USAGE)
 
 
+def test_prints_version(script_runner):
+    result = script_runner.run([SCRIPT_NAME, "--version"])
+    assert result.success
+    expected_version_output = SCRIPT_NAME + " " + __version__ + "\n"
+    assert result.stdout == expected_version_output
+
+
 def test_missing_base(script_runner):
-    result = script_runner.run(SCRIPT_NAME, "base", "map", "3", "out")
+    result = script_runner.run([SCRIPT_NAME, "base", "map", "3", "out"])
     assert not result.success
     assert result.stderr.endswith("does not exist, exiting\n")
 
@@ -150,7 +158,7 @@ def test_missing_base(script_runner):
 def test_missing_map(tmp_path, script_runner):
     base_fp = tmp_path / "base.nii.gz"
     base_fp.touch()
-    result = script_runner.run(SCRIPT_NAME, str(base_fp), "map", "3", "out")
+    result = script_runner.run([SCRIPT_NAME, str(base_fp), "map", "3", "out"])
     assert not result.success
     assert result.stderr.endswith("does not exist, exiting\n")
 
@@ -160,7 +168,7 @@ def test_mismatched_geom(tmp_path, script_runner):
     base_fp = TEST_DATA_DIR / "axial.nii.gz"
     map_fp = TEST_DATA_DIR / "map_mismatched_geom.nii.gz"
 
-    result = script_runner.run(SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp))
+    result = script_runner.run([SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp)])
     assert not result.success
     assert result.stderr.endswith(
         "base and map images have mismatched geometry, exiting\n"
@@ -175,7 +183,7 @@ def test_niioverlay(tmp_path, script_runner):
     base_fp = TEST_DATA_DIR / "axial.nii.gz"
     map_fp = TEST_DATA_DIR / "map.nii.gz"
 
-    result = script_runner.run(SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp))
+    result = script_runner.run([SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp)])
     assert result.success
 
     assert perror(ref_out_fp, out_fp) < pthresh
@@ -208,7 +216,7 @@ def test_niioverlay_rescale(tmp_path, script_runner):
     map_fp = TEST_DATA_DIR / "map.nii.gz"
 
     result = script_runner.run(
-        SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp), "-r"
+        [SCRIPT_NAME, str(base_fp), str(map_fp), "1", str(out_fp), "-r"]
     )
     assert result.success
 
