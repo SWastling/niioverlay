@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3](https://github.com/SWastling/niioverlay/tree/1.0.3) - 2025-06-12
+
+### Changed
+Correct mismatched version numbers between git tags and pyproject.toml
+
 ## [1.0.2](https://github.com/SWastling/niioverlay/tree/1.0.2) - 2025-06-12
 
 ### Changed
