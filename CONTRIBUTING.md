@@ -60,7 +60,7 @@ This guide is intended to be a reference for myself.
 5. Tag the release in the git repository:
 
     ```bash
-    git tag -a $version -m "release 1.0.1"
+    git tag -a 1.0.1 -m "release 1.0.1"
     ```
 
 6. Build the package for distribution:
