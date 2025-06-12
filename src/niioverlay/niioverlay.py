@@ -32,7 +32,7 @@ def check_shape_and_orientation(a_obj, b_obj):
     b_affine = b_obj.header.get_best_affine()
     b_shape = b_obj.header.get_data_shape()
 
-    if np.allclose(a_affine, b_affine) and (a_shape == b_shape):
+    if np.allclose(a_affine, b_affine, atol=1e-4) and (a_shape == b_shape):
         return True
     else:
         return False

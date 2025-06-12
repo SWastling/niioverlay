@@ -83,16 +83,24 @@ def test_perror(ref_fp, test_fp, expected_output):
 
 
 def test_check_shape_and_orientation():
-    nii_obj_1 = nib.nifti1.Nifti1Image(np.ones((32, 32, 16)), np.eye(4))
-    nii_obj_2 = nib.nifti1.Nifti1Image(np.ones((32, 32, 16)), 2 * np.eye(4))
-    nii_obj_3 = nib.nifti1.Nifti1Image(np.ones((32, 32, 18)), np.eye(4))
+    affine_1 = np.eye(4)
+    affine_2 = 2 * np.eye(4)
+    affine_3 = np.eye(4)
+    affine_3[0, 0] = 1 + 1e-4
 
+    nii_obj_1 = nib.nifti1.Nifti1Image(np.ones((32, 32, 16)), affine_1)
+    nii_obj_2 = nib.nifti1.Nifti1Image(np.ones((32, 32, 16)), affine_2)
+    nii_obj_3 = nib.nifti1.Nifti1Image(np.ones((32, 32, 18)), affine_1)
+    nii_obj_4 = nib.nifti1.Nifti1Image(np.ones((32, 32, 16)), affine_3)
+
+    # Identical affine and matrix size
     assert niioverlay.check_shape_and_orientation(nii_obj_1, nii_obj_1)
     # Different affine
     assert not niioverlay.check_shape_and_orientation(nii_obj_1, nii_obj_2)
     # Different matrix size
     assert not niioverlay.check_shape_and_orientation(nii_obj_1, nii_obj_3)
-
+    # Different but within tolerance 1E-4
+    assert niioverlay.check_shape_and_orientation(nii_obj_1, nii_obj_4)
 
 @pytest.mark.parametrize(
     "im, lo, hi, expected_output",
